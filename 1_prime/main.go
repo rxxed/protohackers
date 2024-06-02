@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strconv"
 )
 
 type Request struct {
@@ -60,8 +59,8 @@ func connHandler(conn net.Conn) {
 			break
 		}
 
-		// at this point, ParseFloat cannot possibly return a non-nil err.  we can safely ignore it.
-		floatNum, _ := strconv.ParseFloat(string(*req.Number), 32)
+		// at this point, parsing to float cannot possibly return a non-nil err.  we can safely ignore it.
+		floatNum, _ := req.Number.Float64()
 		num := int(floatNum)
 
 		resp := new(Response)
@@ -84,7 +83,7 @@ func isMalformed(req *Request) bool {
 	if req.Method == nil || req.Number == nil {
 		return true
 	}
-	_, err := strconv.Atoi(string(*req.Number))
+	_, err := req.Number.Float64()
 	if err != nil || *req.Method != primeMethodName {
 		return true
 	}

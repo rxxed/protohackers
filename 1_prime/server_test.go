@@ -68,6 +68,14 @@ func TestIsMalformed(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "float val",
+			request: Request{
+				Method: strPtr("getPrime"),
+				Number: jsonNumberPtr("28.999"),
+			},
+			want: true,
+		},
 	}
 
 	for _, tt := range tests {
