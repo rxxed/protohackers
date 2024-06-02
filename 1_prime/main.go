@@ -42,6 +42,7 @@ func connHandler(conn net.Conn) {
 	defer conn.Close()
 	buf := make([]byte, 65536)
 
+CONNLOOP:
 	for {
 		n, err := conn.Read(buf)
 		if err != nil {
@@ -63,7 +64,7 @@ func connHandler(conn net.Conn) {
 				// the value we Write here doesn't matter, a malformed response is any response that
 				// 1) isn't a valid json or 2) does not conform to the provided standards
 				conn.Write(nil)
-				break
+				break CONNLOOP
 			}
 
 			// by this point, parsing to float cannot possibly return a non-nil err.  we can safely ignore it.
