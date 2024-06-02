@@ -51,6 +51,8 @@ func connHandler(conn net.Conn) {
 		req := new(Request)
 		err = json.Unmarshal(buf[:n], req)
 
+		fmt.Printf("received request: %s\n", string(buf))
+
 		if err != nil || isMalformed(req) {
 			fmt.Fprintf(os.Stderr, "malformed request!\n")
 			// the value we Write here doesn't matter, a malformed response is any response that
@@ -81,10 +83,12 @@ func connHandler(conn net.Conn) {
 
 func isMalformed(req *Request) bool {
 	if req.Method == nil || req.Number == nil {
+		fmt.Fprintf(os.Stderr, "either method or number were not present.\n")
 		return true
 	}
 	_, err := req.Number.Float64()
 	if err != nil || *req.Method != primeMethodName {
+		fmt.Fprintf(os.Stderr, "either method was not 'isPrime' or number wasn't a proper number.\n")
 		return true
 	}
 	return false
