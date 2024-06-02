@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -48,35 +49,40 @@ func connHandler(conn net.Conn) {
 			break
 		}
 
-		req := new(Request)
-		err = json.Unmarshal(buf[:n], req)
+		// split buf by newline and send a response for each line
+		requests := bytes.Split(buf[:n], []byte{'\n'})
 
-		fmt.Printf("received request: %s\n", string(buf))
+		for _, request := range requests {
+			req := new(Request)
+			err = json.Unmarshal(request, req)
 
-		if err != nil || isMalformed(req) {
-			fmt.Fprintf(os.Stderr, "malformed request!\n")
-			// the value we Write here doesn't matter, a malformed response is any response that
-			// 1) isn't a valid json or 2) does not conform to the provided standards
-			conn.Write(nil)
-			break
-		}
+			fmt.Printf("received request: %s\n", string(request))
 
-		// at this point, parsing to float cannot possibly return a non-nil err.  we can safely ignore it.
-		floatNum, _ := req.Number.Float64()
-		num := int(floatNum)
+			if err != nil || isMalformed(req) {
+				fmt.Fprintf(os.Stderr, "malformed request!\n")
+				// the value we Write here doesn't matter, a malformed response is any response that
+				// 1) isn't a valid json or 2) does not conform to the provided standards
+				conn.Write(nil)
+				break
+			}
 
-		resp := new(Response)
-		resp.Method = primeMethodName
-		resp.IsPrime = isPrime(num)
+			// by this point, parsing to float cannot possibly return a non-nil err.  we can safely ignore it.
+			floatNum, _ := req.Number.Float64()
+			num := int(floatNum)
 
-		jsonBytes, err := json.Marshal(resp)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to marshal response: %v\n", resp)
-		}
+			resp := new(Response)
+			resp.Method = primeMethodName
+			resp.IsPrime = isPrime(num)
 
-		_, err = conn.Write(append(jsonBytes, '\n'))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to write %s: %v\n", string(jsonBytes), err)
+			jsonBytes, err := json.Marshal(resp)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "failed to marshal response: %v\n", resp)
+			}
+
+			_, err = conn.Write(append(jsonBytes, '\n'))
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to write %s: %v\n", string(jsonBytes), err)
+			}
 		}
 	}
 }
