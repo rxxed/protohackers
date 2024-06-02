@@ -78,3 +78,27 @@ func TestIsMalformed(t *testing.T) {
 		})
 	}
 }
+
+func TestIsPrime(t *testing.T) {
+	tests := []struct {
+		Name string
+		Num  int
+		Want bool
+	}{
+		{"Two", 2, true},
+		{"Three", 3, true},
+		{"Four", 4, false},
+		{"Negative", -1, false},
+		{"Zero", 0, false},
+		{"Large Prime", 80544491, true},
+		{"Large Non-prime", 80544492, false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			if result := isPrime(test.Num); result != test.Want {
+				t.Errorf("Expected isPrime(%d) to be %v, got %v", test.Num, test.Want, result)
+			}
+		})
+	}
+}

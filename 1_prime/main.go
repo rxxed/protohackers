@@ -40,7 +40,7 @@ func main() {
 
 func connHandler(conn net.Conn) {
 	defer conn.Close()
-	buf := make([]byte, 256)
+	buf := make([]byte, 65536)
 
 	for {
 		n, err := conn.Read(buf)
