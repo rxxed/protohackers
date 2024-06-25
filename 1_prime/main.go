@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -9,109 +9,97 @@ import (
 )
 
 type Request struct {
-	Method *string      `json:"method"`
-	Number *json.Number `json:"number"`
+	Method string      `json:"method"`
+	Number json.Number `json:"number"`
 }
 
 type Response struct {
-	Method  string `json:"method"`
-	IsPrime bool   `json:"prime"`
+	Method string `json:"method"`
+	Prime  bool   `json:"prime"`
 }
 
-const primeMethodName = "isPrime"
+const PrimeMethodName = "isPrime"
 
-func main() {
-	tcpListener, err := net.Listen("tcp", ":4242")
-	if err != nil {
-		panic(err)
-	}
-	defer tcpListener.Close()
-
-	for {
-		conn, err := tcpListener.Accept()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to listen\n")
-			continue
-		}
-
-		go connHandler(conn)
-	}
-}
-
-func connHandler(conn net.Conn) {
-	defer conn.Close()
-	buf := make([]byte, 65536)
-
-CONNLOOP:
-	for {
-		n, err := conn.Read(buf)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Connection closed: %v\n", err)
-			break
-		}
-
-		// split buf by newline and send a response for each line
-		requests := bytes.Split(buf[:n], []byte{'\n'})
-
-		for _, request := range requests {
-			req := new(Request)
-			err = json.Unmarshal(request, req)
-
-			fmt.Printf("received request: %s\n", string(request))
-
-			if err != nil || isMalformed(req) {
-				fmt.Fprintf(os.Stderr, "malformed request!\n")
-				// the value we Write here doesn't matter, a malformed response is any response that
-				// 1) isn't a valid json or 2) does not conform to the provided standards
-				conn.Write(nil)
-				break CONNLOOP
-			}
-
-			// by this point, parsing to float cannot possibly return a non-nil err.  we can safely ignore it.
-			floatNum, _ := req.Number.Float64()
-			num := int(floatNum)
-
-			resp := new(Response)
-			resp.Method = primeMethodName
-			resp.IsPrime = isPrime(num)
-
-			jsonBytes, err := json.Marshal(resp)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "failed to marshal response: %v\n", resp)
-			}
-
-			_, err = conn.Write(append(jsonBytes, '\n'))
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to write %s: %v\n", string(jsonBytes), err)
-			}
-		}
-	}
-}
-
-func isMalformed(req *Request) bool {
-	if req.Method == nil || req.Number == nil {
-		fmt.Fprintf(os.Stderr, "either method or number were not present.\n")
+func (r *Request) IsMalformed() bool {
+	if r.Method == "" || r.Number == "" {
 		return true
 	}
-	_, err := req.Number.Float64()
-	if err != nil || *req.Method != primeMethodName {
-		fmt.Fprintf(os.Stderr, "either method was not 'isPrime' or number wasn't a proper number.\n")
+	if r.Method != PrimeMethodName {
 		return true
 	}
 	return false
 }
 
-func isPrime(num int) bool {
-	if num == 2 {
-		return true
+func main() {
+	ln, err := net.Listen("tcp", ":8777")
+	if err != nil {
+		panic("failed to listen on port")
 	}
-	if num < 2 || num%2 == 0 {
+
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			panic("failed to accept connection")
+		}
+
+		defer conn.Close()
+
+		scanner := bufio.NewScanner(conn)
+		scanner.Split(bufio.ScanLines)
+		for scanner.Scan() {
+			req := Request{}
+			err := json.Unmarshal([]byte(scanner.Text()), &req)
+			if err != nil {
+				// malformed request (invalid json)
+				// nil is sent as malformed response
+				fmt.Fprintln(conn, nil)
+				fmt.Println("malformed request (invalid json)")
+				// break will disconnect client
+				break
+			}
+
+			fmt.Println("req.Method is empty str?: ", req.Method)
+			fmt.Println("req.Number is empty str?: ", req.Number)
+
+			if req.IsMalformed() {
+				// malformed request (missing required fields or wrong method name)
+				// nil is sent as malformed response
+				fmt.Fprintln(conn, nil)
+				fmt.Println("malformed request (missing required fields or wrong method name)")
+				// break will disconnect client
+				break
+			}
+
+			num, err := req.Number.Int64()
+			if err != nil {
+				// malformed request (req.Number is not a valid numeric value)
+				// nil is sent as malformed response
+				fmt.Fprintln(conn, nil)
+				fmt.Println("malformed request (req.Number is not a valid numeric value)")
+				// break will disconnect client
+				break
+			}
+
+			resp := Response{Method: PrimeMethodName}
+			resp.Prime = isPrime(num)
+			// marshaling of resp will never fail, so ignore the error
+			respBytes, _ := json.Marshal(resp)
+
+			fmt.Fprintln(conn, string(respBytes))
+			fmt.Fprintln(os.Stdout, string(respBytes))
+		}
+	}
+}
+
+func isPrime(num int64) bool {
+	if num <= 1 {
 		return false
 	}
-	for i := 3; i*i <= num; i += 2 {
+	for i := int64(2); i*i <= num; i++ {
 		if num%i == 0 {
 			return false
 		}
 	}
+
 	return true
 }
