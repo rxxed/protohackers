@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"sort"
 )
 
 type QueryMessage struct {
@@ -25,36 +24,26 @@ type TimestampPrice struct {
 
 type TimestampPriceStore []TimestampPrice
 
-// implement the sort.Interface interface
-func (tps TimestampPriceStore) Len() int {
-	return len(tps)
-}
-func (tps TimestampPriceStore) Less(i, j int) bool {
-	return tps[i].timestamp < tps[j].timestamp
-}
-func (tps TimestampPriceStore) Swap(i, j int) {
-	tps[i], tps[j] = tps[j], tps[i]
-}
-
 func (tps *TimestampPriceStore) Insert(tp TimestampPrice) {
-	fmt.Println("just inserted")
 	*tps = append(*tps, tp)
-	sort.Sort(tps)
 }
 func (tps TimestampPriceStore) Average(mintime, maxtime int32) int32 {
-	var sum int32
-	var length int32
+	if mintime > maxtime {
+		return 0
+	}
+	var sum int64
+	var length int64
 	for _, tp := range tps {
 		if tp.timestamp >= mintime && tp.timestamp <= maxtime {
 			length++
-			sum += tp.price
+			sum += int64(tp.price)
 		}
 	}
 
 	if length == 0 {
 		return 0
 	}
-	return sum / length
+	return int32(sum / length)
 }
 
 func main() {
