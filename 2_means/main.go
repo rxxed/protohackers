@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 )
 
 type QueryMessage struct {
@@ -24,9 +25,6 @@ type TimestampPrice struct {
 
 type TimestampPriceStore []TimestampPrice
 
-func (tps *TimestampPriceStore) Insert(tp TimestampPrice) {
-	*tps = append(*tps, tp)
-}
 func (tps TimestampPriceStore) Average(mintime, maxtime int32) int32 {
 	if mintime > maxtime {
 		return 0
@@ -69,7 +67,7 @@ func handleClient(conn net.Conn) {
 	for {
 		_, err := io.ReadFull(conn, buf)
 		if err != nil {
-			fmt.Println("read fewer than 9 bytes / eof")
+			fmt.Fprintln(os.Stderr, "read fewer than 9 bytes / eof")
 			return
 		}
 
@@ -78,7 +76,7 @@ func handleClient(conn net.Conn) {
 			reqMsg := TimestampPrice{}
 			reqMsg.timestamp = int32(binary.BigEndian.Uint32(buf[1:5]))
 			reqMsg.price = int32(binary.BigEndian.Uint32(buf[5:9]))
-			tps.Insert(reqMsg)
+			tps = append(tps, reqMsg)
 		case 'Q':
 			reqMsg := QueryMessage{}
 			reqMsg.minTime = int32(binary.BigEndian.Uint32(buf[1:5]))
@@ -88,7 +86,7 @@ func handleClient(conn net.Conn) {
 			binary.BigEndian.PutUint32(ret, uint32(avg))
 			conn.Write(ret)
 		default:
-			fmt.Println("unexpected message type: ", buf[0])
+			fmt.Fprintln(os.Stderr, "unexpected message type: ", buf[0])
 			return
 		}
 	}
