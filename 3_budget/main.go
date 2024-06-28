@@ -23,10 +23,10 @@ func (room *Room) AddUser(user User) {
 	room.users = append(room.users, user)
 }
 
-func (room Room) GetOtherUsers(user User) (users []string) {
+func (room Room) GetOtherUsers(user User) (usernames []string) {
 	for _, u := range room.users {
 		if u.id != user.id {
-			users = append(users, u.username)
+			usernames = append(usernames, u.username)
 		}
 	}
 
@@ -39,6 +39,20 @@ func (room Room) SendMessageToOthers(msg string, user User) {
 			fmt.Fprintf(u.conn, msg)
 		}
 	}
+}
+
+func (room *Room) RemoveUser(user User) {
+	var deleteIdx int
+	for i, u := range room.users {
+		if u.id == user.id {
+			deleteIdx = i
+			break
+		}
+	}
+	newUsers := make([]User, 0)
+	newUsers = append(newUsers, room.users[:deleteIdx]...)
+	newUsers = append(newUsers, room.users[deleteIdx+1:]...)
+	room.users = newUsers
 }
 
 func main() {
@@ -91,6 +105,7 @@ func handleNewConnection(conn net.Conn, room *Room, uniqueId int64) {
 	}
 
 	room.SendMessageToOthers(fmt.Sprintf("* %s has left the room\n", user.username), user)
+	room.RemoveUser(user)
 }
 
 func isAlphaNumeric(bytes []byte) bool {
