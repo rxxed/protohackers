@@ -62,6 +62,8 @@ func main() {
 }
 
 func handleNewConnection(conn net.Conn, room *Room, uniqueId int64) {
+	defer conn.Close()
+
 	fmt.Fprintln(conn, "Welcome to budgetchat! What shall I call you?")
 	name := make([]byte, 24)
 	n, err := conn.Read(name)
