@@ -41,7 +41,7 @@ func (r *Request) Parse(buf []byte) {
 func main() {
 	addr := net.UDPAddr{
 		Port: 8777,
-		IP:   net.ParseIP("127.0.0.1"),
+		IP:   net.IPv4(0, 0, 0, 0),
 	}
 
 	udpconn, err := net.ListenUDP("udp", &addr)
@@ -62,7 +62,7 @@ func main() {
 		}
 
 		req := Request{}
-		req.Parse(buf[:n-1])
+		req.Parse(buf[:n])
 
 		if req.reqType == Insert {
 			if string(req.key) != "version" { // the "version" value should never be modified by clients
