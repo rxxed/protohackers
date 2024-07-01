@@ -84,16 +84,14 @@ func handleConnection(conn net.Conn) {
 func rewriteCoinAddress(msg string) string {
 	msg = strings.TrimSpace(msg)
 	msgSlice := strings.Fields(msg)
-	msgLen := len(msgSlice)
 
 	addrPattern := "^7[a-zA-Z0-9]{25,34}$"
-	matched, _ := regexp.MatchString(addrPattern, msgSlice[0])
-	if matched {
-		msgSlice[0] = BoguscoinAddress
-	}
-	matched, _ = regexp.MatchString(addrPattern, msgSlice[msgLen-1])
-	if matched {
-		msgSlice[msgLen-1] = BoguscoinAddress
+
+	for i, word := range msgSlice {
+		matched, _ := regexp.MatchString(addrPattern, word)
+		if matched {
+			msgSlice[i] = BoguscoinAddress
+		}
 	}
 
 	return strings.Join(msgSlice, " ")
