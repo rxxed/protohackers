@@ -21,15 +21,19 @@ type Client struct {
 	clientMessages   chan string // messages from client
 }
 
+func (c Client) Close() {
+	c.clientConn.Close()
+	c.upstreamConn.Close()
+}
+
 func (c Client) ClientListener() {
 	scanner := bufio.NewScanner(c.clientConn)
-	var msg string
 	for scanner.Scan() {
-		msg = rewriteCoinAddress(scanner.Text())
+		msg := rewriteCoinAddress(scanner.Text())
 		c.clientMessages <- msg
 	}
 	close(c.clientMessages)
-	c.clientConn.Close()
+	c.Close()
 }
 
 func (c Client) ClientWriter() {
@@ -49,7 +53,7 @@ func (c Client) UpstreamListener() {
 		c.upstreamMessages <- msg
 	}
 	close(c.upstreamMessages)
-	c.upstreamConn.Close()
+	c.Close()
 }
 
 func (c Client) UpstreamWriter() {
